@@ -11,6 +11,7 @@ const agents = {
 
 const apiKey = 'your_groq_apikeys';
 const headersFilePath = 'headers.json';
+let rateLimitExceeded = false;
 
 const ASCII_ART = `
  _______                          
@@ -58,13 +59,73 @@ function getRandomTheme() {
   return themes[Math.floor(Math.random() * themes.length)];
 }
 
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function generateRandomWords() {
+  const words = {
+    subjects: [
+      "AI", "blockchain", "smart contracts", "scalability", "security", "privacy", "decentralization", "automation", "trust", "efficiency"
+    ],
+    verbs: [
+      "improve", "affect", "contribute", "enhance", "drive", "change", "transform", "reduce", "optimize", "strengthen"
+    ],
+    objects: [
+      "technology", "systems", "applications", "networks", "protocols", "platforms", "transactions", "processes", "infrastructure", "economy"
+    ],
+    questions: [
+      "How", "What", "Can", "Why", "Does", "What is the impact of", "How does", "What effect does", "Can", "How can"
+    ],
+    modifiers: [
+      "the future of", "the efficiency of", "the security of", "the scalability of", "the integration of", "the development of", "the adoption of"
+    ]
+  };
+
+  const subject = words.subjects[Math.floor(Math.random() * words.subjects.length)];
+  const verb = words.verbs[Math.floor(Math.random() * words.verbs.length)];
+  const object = words.objects[Math.floor(Math.random() * words.objects.length)];
+  const question = words.questions[Math.floor(Math.random() * words.questions.length)];
+  const modifier = words.modifiers[Math.floor(Math.random() * words.modifiers.length)];
+
+  return {
+    subject,
+    verb,
+    object,
+    question,
+    modifier
+  };
+}
+
+function generateHardcodedQuestion(theme) {
+  const { subject, verb, object, question, modifier } = generateRandomWords();
+
+  // Construct a random yet structured question
+  const questionString = `${question} ${subject} ${verb} ${modifier} ${object}?`;
+  return questionString;
+}
+
 async function generateRandomQuestion() {
   const theme = getRandomTheme();
+  
+  // Jika rate limit terlewati, fallback ke pertanyaan hardcoded
+  if (rateLimitExceeded) {
+    return generateHardcodedQuestion(theme);
+  }
+  
   try {
+    // Perbarui prompt untuk mendapatkan variasi pertanyaan yang lebih banyak dan lebih singkat
     const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
       model: 'llama-3.3-70b-versatile',
       messages: [
-        { role: 'user', content: `Generate a unique and natural-sounding question that is related to AI in blockchain and incorporates '${theme}' at the beginning, middle, or end naturally.` }
+        { 
+          role: 'user', 
+          content: `Generate a short, diverse, and random question related to '${theme}' in the context of AI and blockchain. Avoid repetitive phrasing such as 'What impact'. Use different structures like 'What is', 'Can', 'How does', 'Why does', 'Does', and others. Keep it concise and avoid long sentences.`
+        }
       ],
       temperature: 0.9
     }, {
@@ -73,16 +134,29 @@ async function generateRandomQuestion() {
         'Content-Type': 'application/json'
       }
     });
+    
+    // Kembalikan pertanyaan yang dihasilkan
     return response.data.choices[0].message.content.trim();
   } catch (error) {
-    console.error(chalk.red('Error generating question:'), error.response ? error.response.data : error.message);
-    return `What is the impact of ${theme} on blockchain technology?`;
+    // Menangani error jika terjadi rate limit atau lainnya
+    if (error.response && error.response.data && error.response.data.code === 'rate_limit_exceeded') {
+      rateLimitExceeded = true;
+      console.error(chalk.red('Rate limit exceeded. Switching to hardcoded questions.'));
+      return generateHardcodedQuestion(theme);
+    } else {
+      console.error(chalk.red('Error generating question:'), error.response ? error.response.data : error.message);
+      return generateHardcodedQuestion(theme);
+    }
   }
 }
 
+
 async function sendRandomQuestion(agent, headers) {
+  const randomQuestion = await generateRandomQuestion();
+  if (rateLimitExceeded) {
+    return { question: randomQuestion, response: { content: '' } };
+  }
   try {
-    const randomQuestion = await generateRandomQuestion();
     const payload = { message: randomQuestion, stream: false };
     const response = await axios.post(`https://${agent.toLowerCase().replace('_','-')}.stag-vxzy.zettablock.com/main`, payload, {
       headers: { 
@@ -92,8 +166,8 @@ async function sendRandomQuestion(agent, headers) {
     });
     return { question: randomQuestion, response: response.data.choices[0].message };
   } catch (error) {
-    console.error(chalk.red('Error:'), error.response ? error.response.data : error.message);
-    return null;
+    console.error(chalk.red('Error sending question:'), error.response ? error.response.data : error.message);
+    return { question: randomQuestion, response: { content: '' } };
   }
 }
 
@@ -145,7 +219,9 @@ async function processWallet(wallet, headers, iterationsPerAgent) {
     for (let i = 0; i < iterationsPerAgent; i++) {
       console.log(chalk.yellow(`Literacy-${i + 1}`));
       const nanya = await sendRandomQuestion(agentId, headers[wallet]);
-      
+      if (nanya.response.content === '' && !rateLimitExceeded) {
+        rateLimitExceeded = true;
+      }
       if (nanya && nanya.response && nanya.response.content) {
         const truncatedResponse = nanya.response.content.split(' ').slice(0, 7).join(' ') + '...';
         console.log(chalk.cyan('Question:'), chalk.bold(nanya.question));
@@ -159,7 +235,7 @@ async function processWallet(wallet, headers, iterationsPerAgent) {
       } else {
         console.log(chalk.red('Unable to send question, error occurred.'));
       }
-      
+
       await sleep(1000);
     }
 
@@ -185,6 +261,10 @@ async function main() {
 
   const randomTime = Math.floor(Math.random() * (7 * 3600 - 3 * 3600 + 1)) + 3 * 3600;
   await countdown(randomTime);
+
+  // Reset rateLimitExceeded for the next iteration
+  rateLimitExceeded = false;
+  await main(); // Start the process again
 }
 
 main();
