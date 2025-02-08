@@ -5,8 +5,7 @@ import { faker } from '@faker-js/faker';
 
 const agents = {
   "deployment_p5J9lz1Zxe7CYEoo0TZpRVay": "Professor",
-  "deployment_7sZJSiCqCNDy9bBHTEh7dwd9": "Crypto Buddy",
-  "deployment_SoFftlsf9z4fyA3QCHYkaANq": "Sherlock"
+  "deployment_7sZJSiCqCNDy9bBHTEh7dwd9": "Crypto Buddy"
 };
 
 const apiKey = 'your_groq_apikeys';
@@ -150,7 +149,6 @@ async function generateRandomQuestion() {
   }
 }
 
-
 async function sendRandomQuestion(agent, headers) {
   const randomQuestion = await generateRandomQuestion();
   if (rateLimitExceeded) {
@@ -219,22 +217,23 @@ async function processWallet(wallet, headers, iterationsPerAgent) {
     for (let i = 0; i < iterationsPerAgent; i++) {
       console.log(chalk.yellow(`Literacy-${i + 1}`));
       const nanya = await sendRandomQuestion(agentId, headers[wallet]);
-      if (nanya.response.content === '' && !rateLimitExceeded) {
-        rateLimitExceeded = true;
-      }
-      if (nanya && nanya.response && nanya.response.content) {
-        const truncatedResponse = nanya.response.content.split(' ').slice(0, 7).join(' ') + '...';
-        console.log(chalk.cyan('Question:'), chalk.bold(nanya.question));
-        console.log(chalk.green('Answer:'), chalk.italic(truncatedResponse));
-
-        await reportUsage(wallet.toLowerCase(), {
-          agent_id: agentId,
-          question: nanya.question,
-          response: nanya.response.content
-        });
-      } else {
+      if (!nanya || !nanya.response || !nanya.response.content) {
+        if (!rateLimitExceeded) {
+          rateLimitExceeded = true;
+        }
         console.log(chalk.red('Unable to send question, error occurred.'));
+        continue; // Skip the rest of the loop and move to the next iteration
       }
+
+      const truncatedResponse = nanya.response.content.split(' ').slice(0, 7).join(' ') + '...';
+      console.log(chalk.cyan('Question:'), chalk.bold(nanya.question));
+      console.log(chalk.green('Answer:'), chalk.italic(truncatedResponse));
+
+      await reportUsage(wallet.toLowerCase(), {
+        agent_id: agentId,
+        question: nanya.question,
+        response: nanya.response.content
+      });
 
       await sleep(1000);
     }
@@ -248,7 +247,7 @@ async function main() {
 
   const wallets = fs.readFileSync('wallet.txt', 'utf-8').split('\n').filter(Boolean);
   const headers = loadHeaders();
-  const iterationsPerAgent = 10;
+  const iterationsPerAgent = 7; // Update to only one iteration per agent
 
   for (const wallet of wallets) {
     if (!headers[wallet]) {
@@ -256,7 +255,11 @@ async function main() {
       saveHeaders(headers);
     }
 
-    await processWallet(wallet, headers, iterationsPerAgent);
+    try {
+      await processWallet(wallet, headers, iterationsPerAgent);
+    } catch (error) {
+      console.error(chalk.red(`Failed to process wallet ${wallet}:`), error.message);
+    }
   }
 
   const randomTime = Math.floor(Math.random() * (7 * 3600 - 3 * 3600 + 1)) + 3 * 3600;
