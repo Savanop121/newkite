@@ -3,7 +3,6 @@ import fs from 'fs';
 import chalk from 'chalk';
 import { faker } from '@faker-js/faker';
 import readline from 'readline';
-import { main } from './main.js';
 
 const agents = {
   "deployment_p5J9lz1Zxe7CYEoo0TZpRVay": "Professor",
@@ -15,7 +14,19 @@ const headersFilePath = 'headers.json';
 let rateLimitExceeded = false;
 
 const ASCII_ART = `
+ _______                          
+|     __|.--.--.---.-.-----.---.-.
+|__     ||  |  |  _  |-- __|  _  |
+|_______||___  |___._|_____|___._|
+         |_____|
+`;
 
+const BANNER = `
+███████  █████  ██    ██  █████  ███    ██ 
+██      ██   ██ ██    ██ ██   ██ ████   ██ 
+███████ ███████ ██    ██ ███████ ██ ██  ██ 
+     ██ ██   ██  ██  ██  ██   ██ ██  ██ ██ 
+███████ ██   ██   ████   ██   ██ ██   ████
 `;
 
 async function displayAppTitle() {
@@ -240,42 +251,6 @@ async function processWallet(wallet, headers, iterationsPerAgent) {
   }
 }
 
-async function main() {
-  await displayAppTitle();
-
-  const wallets = fs.readFileSync('wallet.txt', 'utf-8').split('\n').filter(Boolean);
-  const headers = loadHeaders();
-  const iterationsPerAgent = 7; // Update to only one iteration per agent
-
-  for (const wallet of wallets) {
-    if (!headers[wallet]) {
-      headers[wallet] = { 'User-Agent': generateRandomDesktopHeader() };
-      saveHeaders(headers);
-    }
-
-    try {
-      await processWallet(wallet, headers, iterationsPerAgent);
-    } catch (error) {
-      console.error(chalk.red(`Failed to process wallet ${wallet}:`), error.message);
-    }
-  }
-
-  const randomTime = Math.floor(Math.random() * (7 * 3600 - 3 * 3600 + 1)) + 3 * 3600;
-  await countdown(randomTime);
-
-  // Reset rateLimitExceeded for the next iteration
-  rateLimitExceeded = false;
-  await main(); // Start the process again
-}
-
-const BANNER = `
-███████  █████  ██    ██  █████  ███    ██ 
-██      ██   ██ ██    ██ ██   ██ ████   ██ 
-███████ ███████ ██    ██ ███████ ██ ██  ██ 
-     ██ ██   ██  ██  ██  ██   ██ ██  ██ ██ 
-███████ ██   ██   ████   ██   ██ ██   ████
-`;
-
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -356,6 +331,33 @@ async function deleteApiKey() {
 
 async function startInteraction() {
     console.clear();
+    await main();
+}
+
+async function main() {
+    await displayAppTitle();
+
+    const wallets = fs.readFileSync('wallet.txt', 'utf-8').split('\n').filter(Boolean);
+    const headers = loadHeaders();
+    const iterationsPerAgent = 7;
+
+    for (const wallet of wallets) {
+        if (!headers[wallet]) {
+            headers[wallet] = { 'User-Agent': generateRandomDesktopHeader() };
+            saveHeaders(headers);
+        }
+
+        try {
+            await processWallet(wallet, headers, iterationsPerAgent);
+        } catch (error) {
+            console.error(chalk.red(`Failed to process wallet ${wallet}:`), error.message);
+        }
+    }
+
+    const randomTime = Math.floor(Math.random() * (7 * 3600 - 3 * 3600 + 1)) + 3 * 3600;
+    await countdown(randomTime);
+
+    rateLimitExceeded = false;
     await main();
 }
 
