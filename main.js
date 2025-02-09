@@ -242,9 +242,87 @@ async function processWallet(wallet, headers, iterationsPerAgent) {
   }
 }
 
-async function main() {
-  await displayAppTitle();
+function displayCustomBanner() {
+  const banner = `
+███████  █████  ██    ██  █████  ███    ██ 
+██      ██   ██ ██    ██ ██   ██ ████   ██ 
+███████ ███████ ██    ██ ███████ ██ ██  ██ 
+     ██ ██   ██  ██  ██  ██   ██ ██  ██ ██ 
+███████ ██   ██   ████   ██   ██ ██   ████
+`;
+  console.log(banner);
+}
 
+// Command-line argument parsing block
+if (process.argv.length > 2) {
+  const command = process.argv[2].toLowerCase();
+  switch (command) {
+    case 'add-wallet': {
+      const walletToAdd = process.argv[3];
+      if (!walletToAdd) {
+        console.error('Please provide a wallet address to add.');
+        process.exit(1);
+      }
+      try {
+        fs.appendFileSync('wallet.txt', walletToAdd + '\n', 'utf-8');
+        console.log('Wallet added successfully.');
+      } catch (e) {
+        console.error('Error adding wallet:', e.message);
+      }
+      process.exit(0);
+    }
+    case 'app-api-key': {
+      const newApiKey = process.argv[3];
+      if (!newApiKey) {
+        console.error('Please provide an API key.');
+        process.exit(1);
+      }
+      const mainJsPath = 'main.js';
+      let content = fs.readFileSync(mainJsPath, 'utf-8').split('\n');
+      if (content.length < 11) {
+        console.error('main.js does not have enough lines.');
+        process.exit(1);
+      }
+      content[10] = `const apiKey = '${newApiKey}';`;
+      fs.writeFileSync(mainJsPath, content.join('\n'), 'utf-8');
+      console.log('API key updated successfully in main.js.');
+      process.exit(0);
+    }
+    case 'reset-wallets': {
+      try {
+        fs.writeFileSync('wallet.txt', '', 'utf-8');
+        console.log('Wallets reset successfully.');
+      } catch(e) {
+        console.error('Error resetting wallets:', e.message);
+      }
+      process.exit(0);
+    }
+    case 'delete-api-key': {
+      const mainJsPath = 'main.js';
+      let content = fs.readFileSync(mainJsPath, 'utf-8').split('\n');
+      if (content.length < 11) {
+        console.error('main.js does not have enough lines.');
+        process.exit(1);
+      }
+      content[10] = `const apiKey = 'your_groq_apikeys';`;
+      fs.writeFileSync(mainJsPath, content.join('\n'), 'utf-8');
+      console.log('API key deleted successfully in main.js.');
+      process.exit(0);
+    }
+    case 'start-intresction':
+      // Do nothing; continue to start the interaction
+      break;
+    default:
+      console.log('Unknown command. Available commands: add-wallet, app-api-key, reset-wallets, delete-api-key, start-intresction.');
+      process.exit(1);
+  }
+}
+
+// Modify main() to display the custom banner before the existing app title
+async function main() {
+  displayCustomBanner();
+  await displayAppTitle();
+  
   const wallets = fs.readFileSync('wallet.txt', 'utf-8').split('\n').filter(Boolean);
   const headers = loadHeaders();
   const iterationsPerAgent = 7; // Update to only one iteration per agent
@@ -270,4 +348,7 @@ async function main() {
   await main(); // Start the process again
 }
 
-main();
+// If no command-line argument is provided or if 'start-intresction' is specified, start the main interaction
+if (!process.argv[2] || process.argv[2].toLowerCase() === 'start-intresction') {
+  main();
+}
