@@ -2,6 +2,8 @@ import axios from 'axios';
 import fs from 'fs';
 import chalk from 'chalk';
 import { faker } from '@faker-js/faker';
+import readline from 'readline';
+import { main } from './main.js';
 
 const agents = {
   "deployment_p5J9lz1Zxe7CYEoo0TZpRVay": "Professor",
@@ -13,11 +15,7 @@ const headersFilePath = 'headers.json';
 let rateLimitExceeded = false;
 
 const ASCII_ART = `
- _______                          
-|     __|.--.--.---.-.-----.---.-.
-|__     ||  |  |  _  |-- __|  _  |
-|_______||___  |___._|_____|___._|
-         |_____|
+
 `;
 
 async function displayAppTitle() {
@@ -242,87 +240,9 @@ async function processWallet(wallet, headers, iterationsPerAgent) {
   }
 }
 
-function displayCustomBanner() {
-  const banner = `
-███████  █████  ██    ██  █████  ███    ██ 
-██      ██   ██ ██    ██ ██   ██ ████   ██ 
-███████ ███████ ██    ██ ███████ ██ ██  ██ 
-     ██ ██   ██  ██  ██  ██   ██ ██  ██ ██ 
-███████ ██   ██   ████   ██   ██ ██   ████
-`;
-  console.log(banner);
-}
-
-// Command-line argument parsing block
-if (process.argv.length > 2) {
-  const command = process.argv[2].toLowerCase();
-  switch (command) {
-    case 'add-wallet': {
-      const walletToAdd = process.argv[3];
-      if (!walletToAdd) {
-        console.error('Please provide a wallet address to add.');
-        process.exit(1);
-      }
-      try {
-        fs.appendFileSync('wallet.txt', walletToAdd + '\n', 'utf-8');
-        console.log('Wallet added successfully.');
-      } catch (e) {
-        console.error('Error adding wallet:', e.message);
-      }
-      process.exit(0);
-    }
-    case 'app-api-key': {
-      const newApiKey = process.argv[3];
-      if (!newApiKey) {
-        console.error('Please provide an API key.');
-        process.exit(1);
-      }
-      const mainJsPath = 'main.js';
-      let content = fs.readFileSync(mainJsPath, 'utf-8').split('\n');
-      if (content.length < 11) {
-        console.error('main.js does not have enough lines.');
-        process.exit(1);
-      }
-      content[10] = `const apiKey = '${newApiKey}';`;
-      fs.writeFileSync(mainJsPath, content.join('\n'), 'utf-8');
-      console.log('API key updated successfully in main.js.');
-      process.exit(0);
-    }
-    case 'reset-wallets': {
-      try {
-        fs.writeFileSync('wallet.txt', '', 'utf-8');
-        console.log('Wallets reset successfully.');
-      } catch(e) {
-        console.error('Error resetting wallets:', e.message);
-      }
-      process.exit(0);
-    }
-    case 'delete-api-key': {
-      const mainJsPath = 'main.js';
-      let content = fs.readFileSync(mainJsPath, 'utf-8').split('\n');
-      if (content.length < 11) {
-        console.error('main.js does not have enough lines.');
-        process.exit(1);
-      }
-      content[10] = `const apiKey = 'your_groq_apikeys';`;
-      fs.writeFileSync(mainJsPath, content.join('\n'), 'utf-8');
-      console.log('API key deleted successfully in main.js.');
-      process.exit(0);
-    }
-    case 'start-intresction':
-      // Do nothing; continue to start the interaction
-      break;
-    default:
-      console.log('Unknown command. Available commands: add-wallet, app-api-key, reset-wallets, delete-api-key, start-intresction.');
-      process.exit(1);
-  }
-}
-
-// Modify main() to display the custom banner before the existing app title
 async function main() {
-  displayCustomBanner();
   await displayAppTitle();
-  
+
   const wallets = fs.readFileSync('wallet.txt', 'utf-8').split('\n').filter(Boolean);
   const headers = loadHeaders();
   const iterationsPerAgent = 7; // Update to only one iteration per agent
@@ -348,7 +268,98 @@ async function main() {
   await main(); // Start the process again
 }
 
-// If no command-line argument is provided or if 'start-intresction' is specified, start the main interaction
-if (!process.argv[2] || process.argv[2].toLowerCase() === 'start-intresction') {
-  main();
+const BANNER = `
+███████  █████  ██    ██  █████  ███    ██ 
+██      ██   ██ ██    ██ ██   ██ ████   ██ 
+███████ ███████ ██    ██ ███████ ██ ██  ██ 
+     ██ ██   ██  ██  ██  ██   ██ ██  ██ ██ 
+███████ ██   ██   ████   ██   ██ ██   ████
+`;
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+async function showMenu() {
+    console.clear();
+    console.log(chalk.cyan(BANNER));
+    console.log(chalk.yellow('\nMenu Options:'));
+    console.log('1. TYPE TO ADD WALLET');
+    console.log('2. APP API KEY');
+    console.log('3. RESET WALLETS');
+    console.log('4. DELETE API KEY');
+    console.log('5. START INTERACTION');
+    console.log('6. EXIT');
 }
+
+async function handleMenuChoice() {
+    while (true) {
+        await showMenu();
+        const choice = await new Promise(resolve => rl.question('\nEnter your choice (1-6): ', resolve));
+
+        switch (choice) {
+            case '1':
+                await addWallet();
+                break;
+            case '2':
+                await setApiKey();
+                break;
+            case '3':
+                await resetWallets();
+                break;
+            case '4':
+                await deleteApiKey();
+                break;
+            case '5':
+                await startInteraction();
+                break;
+            case '6':
+                rl.close();
+                return;
+            default:
+                console.log(chalk.red('Invalid choice. Press Enter to continue...'));
+                await new Promise(resolve => rl.question('', resolve));
+        }
+    }
+}
+
+async function addWallet() {
+    const wallet = await new Promise(resolve => rl.question('Enter wallet address: ', resolve));
+    fs.appendFileSync('wallet.txt', wallet + '\n');
+    console.log(chalk.green('Wallet added successfully!'));
+    await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
+}
+
+async function setApiKey() {
+    const apiKey = await new Promise(resolve => rl.question('Enter API Key: ', resolve));
+    let content = fs.readFileSync('main.js', 'utf8');
+    content = content.replace(/const apiKey = .*?;/, `const apiKey = '${apiKey}';`);
+    fs.writeFileSync('main.js', content);
+    console.log(chalk.green('API Key set successfully!'));
+    await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
+}
+
+async function resetWallets() {
+    fs.writeFileSync('wallet.txt', '');
+    console.log(chalk.green('Wallets reset successfully!'));
+    await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
+}
+
+async function deleteApiKey() {
+    let content = fs.readFileSync('main.js', 'utf8');
+    content = content.replace(/const apiKey = .*?;/, `const apiKey = 'your_groq_apikeys';`);
+    fs.writeFileSync('main.js', content);
+    console.log(chalk.green('API Key deleted successfully!'));
+    await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
+}
+
+async function startInteraction() {
+    console.clear();
+    await main();
+}
+
+// Start the menu
+handleMenuChoice();
+
+export { main };
