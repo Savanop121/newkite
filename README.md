@@ -18,8 +18,8 @@ This Node.js script automates AI-related blockchain question generation and inte
 ### How to Use
 1. Clone the repository:
    ```sh
-   git clone https://github.com/0xsyo/kiteai.git
-   cd kiteai
+   git clone https://github.com/Savanop121/newkite.git
+   cd newkite
    ```
 2. Install dependencies:
    ```sh
@@ -57,8 +57,8 @@ Skrip Node.js ini mengotomatisasi pembuatan pertanyaan terkait AI dan blockchain
 ### Cara Menggunakan
 1. Clone repository:
    ```sh
-   git clone https://github.com/0xsyo/kiteai.git
-   cd kiteai
+   git clone https://github.com/Savanop121/newkite.git
+   cd newkite
    ```
 2. Install dependencies:
    ```sh
