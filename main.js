@@ -23,7 +23,13 @@ const proxyIndexFilePath = 'proxy_index.txt';
 let rateLimitExceeded = false;
 
 const ASCII_ART = ` ██    ██`;
-const BANNER = ` hshs `;
+const BANNER = `
+███████  █████  ██    ██  █████  ███    ██ 
+██      ██   ██ ██    ██ ██   ██ ████   ██ 
+███████ ███████ ██    ██ ███████ ██ ██  ██ 
+     ██ ██   ██  ██  ██  ██   ██ ██  ██ ██ 
+███████ ██   ██   ████   ██   ██ ██   ████
+`;
 
 // Create readline interface for menu input.
 const rl = readline.createInterface({
@@ -442,6 +448,8 @@ async function showMenu() {
   console.log('4. DELETE API KEY');
   console.log('5. START INTERACTION');
   console.log('6. EXIT');
+  console.log('7. ADD PROXY');
+  console.log('8. RESET PROXY');
 }
 
 async function addWallet() {
@@ -454,7 +462,7 @@ async function addWallet() {
 async function setApiKey() {
   const newApiKey = await new Promise(resolve => rl.question('Enter API Key: ', resolve));
   let content = fs.readFileSync('main.js', 'utf8');
-  content = content.replace(/const apiKey = .*?;/, `const apiKey = '${newApiKey}';`);
+  content = content.replace(/let apiKey = .*?;/, `let apiKey = '${newApiKey}';`);
   fs.writeFileSync('main.js', content);
   console.log(chalk.green('API Key set successfully!'));
   await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
@@ -468,9 +476,22 @@ async function resetWallets() {
 
 async function deleteApiKey() {
   let content = fs.readFileSync('main.js', 'utf8');
-  content = content.replace(/const apiKey = .*?;/, `const apiKey = 'your_groq_apikeys';`);
+  content = content.replace(/let apiKey = .*?;/, `let apiKey = 'your_groq_apikeys';`);
   fs.writeFileSync('main.js', content);
   console.log(chalk.green('API Key deleted successfully!'));
+  await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
+}
+
+async function addProxy() {
+  const proxy = await new Promise(resolve => rl.question('Enter proxy (format: protocol://host:port): ', resolve));
+  fs.appendFileSync('proxy.txt', proxy + '\n');
+  console.log(chalk.green('Proxy added successfully!'));
+  await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
+}
+
+async function resetProxy() {
+  fs.writeFileSync('proxy.txt', '');
+  console.log(chalk.green('Proxies reset successfully!'));
   await new Promise(resolve => rl.question('Press Enter to continue...', resolve));
 }
 
@@ -482,7 +503,7 @@ async function startInteraction() {
 async function handleMenuChoice() {
   while (true) {
     await showMenu();
-    const choice = await new Promise(resolve => rl.question('\nEnter your choice (1-6): ', resolve));
+    const choice = await new Promise(resolve => rl.question('\nEnter your choice (1-8): ', resolve));
     switch (choice.trim()) {
       case '1':
         await addWallet();
@@ -502,6 +523,12 @@ async function handleMenuChoice() {
       case '6':
         rl.close();
         process.exit(0);
+      case '7':
+        await addProxy();
+        break;
+      case '8':
+        await resetProxy();
+        break;
       default:
         console.log(chalk.red('Invalid choice. Press Enter to continue...'));
         await new Promise(resolve => rl.question('', resolve));
