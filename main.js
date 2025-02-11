@@ -22,8 +22,8 @@ const headersFilePath = 'headers.json';
 const proxyIndexFilePath = 'proxy_index.txt';
 let rateLimitExceeded = false;
 
-const ASCII_ART = `███████  █████  ██    ██  █████  ███    ██    ██      ██   ██ ██    ██ ██   ██ ████   ██    ███████ ███████ ██    ██ ███████ ██ ██  ██    ██ ██   ██  ██  ██  ██   ██ ██  ██ ██    ███████ ██   ██   ████   ██   ██ ██   ████`;
-const BANNER = `███████  █████  ██    ██  █████  ███    ██    ██      ██   ██ ██    ██ ██   ██ ████   ██    ███████ ███████ ██    ██ ███████ ██ ██  ██    ██ ██   ██  ██  ██  ██   ██ ██  ██ ██    ███████ ██   ██   ████   ██   ██ ██   ████`;
+const ASCII_ART = ` ██    ██`;
+const BANNER = ` hshs `;
 
 // Create readline interface for menu input.
 const rl = readline.createInterface({
